@@ -1,3 +1,12 @@
-1. Run demo server. Get it: https://github.com/livenson/opennode-demo-api
-2. compile.sh
-3. run.sh
+OpenNode_Android_Core: https://github.com/kristjancode/OpenNode_Android_Core
+OpenNode_Android: https://github.com/kristjancode/OpenNode_Android
+
+Requirements: Java 1.x, Python 2.7.x
+
+1. Get demo server: https://github.com/livenson/opennode-demo-api, get demo.py
+2. Get http://webpy.org/static/web.py-0.36.tar.gz
+3. Extract web.py-0.36.tar.gz, copy 'web' folder to the same folder as demo.py
+4. Run demo server, python demo.py
+
+5. compile.sh
+6. run.sh
