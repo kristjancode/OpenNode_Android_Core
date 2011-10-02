@@ -1,10 +1,20 @@
 OpenNode_Android_Core: https://github.com/kristjancode/OpenNode_Android_Core
 OpenNode_Android: https://github.com/kristjancode/OpenNode_Android
 
-Requirements: Java 1.x, Python 2.7.x
+Description:
+This is a separate repository for the Core in the OpenNode_Android project. Core is also integrated there.
 
-1. git clone git://github.com/kristjancode/OpenNode_Android_Core.git
-2. cd OpenNode_Android_Core
-3. run_demoserver.sh as an - Runs the demo server, run this as an external process.
-4. compile_core.sh - Compiles core.
-5. run_core.sh - Runs core example usage.
+Requirements: 
+Java 1.6+ 
+Python 2.7.x - 3.x does not work!!!
+Make sure Java and Python are in the PATH environment variable (java, javac, python).
+
+1. Open Git Bash, cd to your desired directory.
+2. git clone git://github.com/kristjancode/OpenNode_Android_Core.git
+3. cd OpenNode_Android_Core
+4. run_demoserver.sh - Runs the demo server, run this in a separate bash.
+5. compile_core.sh - Compiles core.
+6. run_core.sh - Runs core example usage.
+
+Note:
+The original repository for the demo server is at: https://github.com/livenson/opennode-demo-api
