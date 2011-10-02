@@ -1,1 +1,0 @@
-javac -cp lib/json_parser.jar -sourcepath src src/main/* -d bin
