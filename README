@@ -3,10 +3,8 @@ OpenNode_Android: https://github.com/kristjancode/OpenNode_Android
 
 Requirements: Java 1.x, Python 2.7.x
 
-1. Get demo server: https://github.com/livenson/opennode-demo-api, get demo.py
-2. Get http://webpy.org/static/web.py-0.36.tar.gz
-3. Extract web.py-0.36.tar.gz, copy 'web' folder to the same folder as demo.py
-4. Run demo server, python demo.py
-
-5. compile.sh
-6. run.sh
+1. git clone git://github.com/kristjancode/OpenNode_Android_Core.git
+2. cd OpenNode_Android_Core
+3. run_demoserver.sh as an - Runs the demo server, run this as an external process.
+4. compile_core.sh - Compiles core.
+5. run_core.sh - Runs core example usage.
