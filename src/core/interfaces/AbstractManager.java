@@ -18,11 +18,13 @@ public abstract class AbstractManager<T extends Item>
 		m_request = request;
 	}
 	
-	public int itemCount()
+	//Returns the item count.
+	public int count()
 	{
 		return m_items.size();
 	}
 	
+	//Returns an item at a specified index, if item doesn't exist null is returned.
 	public T item(int index)
 	{
 		T item = null;
@@ -35,33 +37,24 @@ public abstract class AbstractManager<T extends Item>
 		return item;
 	}
 	
-	public boolean loadItems()
-	{
-		return requestItems();
-	}
-	
-	public boolean loadItemDetails(T item)
-	{
-		return requestItemDetails(item);
-	}
-	
-	private boolean requestItems()
+	//Clears current item list and loads new items from the server.
+	public boolean load()
 	{
 		boolean success = false;
 		
 		try
 		{
 			m_items.removeAll(m_items);
-			String response = m_serverConnector.request(m_request);
+			String response = m_serverConnector.httpGET(m_request + "/");
 			JSONArray jsonArray = new JSONArray(response);
 			int length = jsonArray.length();
 			
 			for (int i = 0; i < length; i++)
 			{
 				JSONObject jsonObject = jsonArray.getJSONObject(i);
-				T item = parseItem(jsonObject, false);
+				T item = itemInstance();
 				
-				if (item != null)
+				if (item.assign(jsonObject, false))
 				{
 					m_items.add(item);
 				}
@@ -77,15 +70,19 @@ public abstract class AbstractManager<T extends Item>
 		return success;
 	}
 	
-	private boolean requestItemDetails(T item)
+	//Gets item details from the server.
+	public boolean details(T item)
 	{
 		boolean success = false;
 		
 		try
 		{
-			String response = m_serverConnector.request(m_request + "/" + item.id());
-			JSONObject jsonObject = new JSONObject(response);
-			success = parseItem(item, jsonObject, true);
+			if (m_items.contains(item))
+			{
+				String response = m_serverConnector.httpGET(m_request + "/" + item.id());
+				JSONObject jsonObject = new JSONObject(response);
+				success = item.assign(jsonObject, true);
+			}
 		}
 		catch (Exception exception)
 		{
@@ -95,8 +92,75 @@ public abstract class AbstractManager<T extends Item>
 		return success;
 	}
 	
-	protected abstract T parseItem(JSONObject jsonObject, boolean full);
-	protected abstract boolean parseItem(T item, JSONObject jsonObject, boolean full);
+	//Creates a new item, automatically adds it to the item list.
+	public boolean create(T item)
+	{
+		boolean success = false;
+		
+		try
+		{
+			String response = m_serverConnector.httpPOST(m_request + "/", item.toJSON());
+			JSONObject jsonObject = new JSONObject(response);
+			
+			if (item.assign(jsonObject, true))
+			{
+				m_items.add(item);
+				success = true;
+			}
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return success;
+	}
+	
+	//Updates an item.
+	public boolean update(T item, T newItem)
+	{
+		boolean success = false;
+		
+		try
+		{
+			if (m_items.contains(item))
+			{
+				String response = m_serverConnector.httpPUT(m_request + "/" + item.id(), newItem.toJSON());
+				JSONObject jsonObject = new JSONObject(response);
+				success = item.assign(jsonObject, true);
+			}
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return success;
+	}
+	
+	//Deletes an item, item is automatically remove from the current item list.
+	public boolean delete(T item)
+	{
+		boolean success = false;
+		
+		try
+		{
+			if (m_items.contains(item))
+			{
+				m_items.remove(item);
+				String response = m_serverConnector.httpDELETE(m_request + "/" + item.id());
+				success = response != null;
+			}
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return success;
+	}
+	
+	protected abstract T itemInstance();
 	
 	protected Core m_core;
 	protected ServerConnector m_serverConnector;

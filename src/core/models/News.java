@@ -4,21 +4,18 @@ import org.json.JSONObject;
 
 public class News extends Item
 {
-	private News()
+	public News()
 	{
-		
+		super();
+		m_type = null;
+		m_content = null;
 	}
 	
-	private void assign(News news)
+	public News(int id, String name, String type, String content)
 	{
-		super.assign(news);
-		m_type = news.m_type;
-		m_content = news.m_content;
-	}
-	
-	public String title()
-	{
-		return m_name;
+		super(id, name);
+		m_type = type;
+		m_content = content;
 	}
 	
 	public String type()
@@ -29,6 +26,61 @@ public class News extends Item
 	public String content()
 	{
 		return m_content;
+	}
+	
+	public boolean assign(Item item)
+	{
+		boolean success = false;
+		
+		try
+		{
+			assignNews((News) item);
+			success = true;
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return success;
+	}
+	
+	public boolean assign(JSONObject jsonObject, boolean full)
+	{
+		boolean success = false;
+		
+		try
+		{
+			News temp = new News();
+			temp.assignNews(jsonObject, full);
+			assignNews(temp);
+			success = true;
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return success;
+	}
+	
+	@Override
+	public String toJSON()
+	{
+		String jsonRepresentation = null;
+		
+		try
+		{
+			JSONObject jsonObject = new JSONObject();
+			jsonNews(jsonObject);
+			jsonRepresentation = jsonObject.toString();
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return jsonRepresentation;
 	}
 	
 	@Override
@@ -49,51 +101,29 @@ public class News extends Item
 		return stringRepresentation;
 	}
 	
-	public static News parse(JSONObject jsonObject, boolean full)
+	private void assignNews(News news)
 	{
-		News news = null;
-		News temp = new News();
-		
-		if (parse(temp, jsonObject, full))
-		{
-			news = temp;
-		}
-		
-		return news;
+		assignItem(news);
+		m_type = news.m_type;
+		m_content = news.m_content;
 	}
 	
-	public static boolean parse(News news, JSONObject jsonObject, boolean full)
+	private void assignNews(JSONObject jsonObject, boolean full) throws Exception
 	{
-		boolean success = false;
+		assignItem(jsonObject, full);
 		
-		try
+		if (m_full)
 		{
-			News temp = new News();
-			temp.m_full = full;
-			
-			if (full)
-			{
-				temp.m_id = jsonObject.getInt("id");
-				temp.m_name = jsonObject.getString("title");
-				temp.m_type = jsonObject.getString("type");
-				temp.m_content = jsonObject.getString("content");
-			}
-			else
-			{
-				String key = (String) jsonObject.keys().next();
-				temp.m_id = Integer.parseInt(key);
-				temp.m_name = jsonObject.getString(key);
-			}
-			
-			news.assign(temp);
-			success = true;
+			m_type = jsonObject.getString("type");
+			m_content = jsonObject.getString("content");
 		}
-		catch (Exception exception)
-		{
-			
-		}
-		
-		return success;
+	}
+	
+	private void jsonNews(JSONObject jsonObject) throws Exception
+	{
+		jsonItem(jsonObject);
+		jsonObject.put("type", m_type);
+		jsonObject.put("content", m_content);
 	}
 	
 	private String m_type;

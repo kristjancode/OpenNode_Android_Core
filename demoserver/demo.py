@@ -6,23 +6,22 @@ import string
 import random
 
 urls = (
-    '/computes', 'ComputeList',
+    '/computes/', 'ComputeList',
     '/computes/(\d+)', 'Compute',
-    '/networks', 'NetworkList',
+    '/networks/', 'NetworkList',
     '/networks/(\d+)', 'Network',
-    '/storages', 'StorageList',
+    '/storages/', 'StorageList',
     '/storages/(\d+)', 'Storage',
-    '/templates', 'TemplateList',
+    '/templates/', 'TemplateList',
     '/templates/(\d+)', 'Template',
-    '/news', 'NewsList',
+    '/news/', 'NewsList',
     '/news/(\d+)', 'News'
 )
 app = web.application(urls, globals())
 
 def gen_compute_data(id):
-    id = int(id)
     return {'id': id,
-            'hostname': 'hostname %s' %id, 
+            'name': 'hostname %s' %id, 
             'arch': ['x86', 'x64', 'win32', 'win64', 'macosx'][id % 5], 
             'memory': 2*id,
             'cpu': 0.2 * id,
@@ -31,7 +30,6 @@ def gen_compute_data(id):
             'state': ['running', 'stopped', 'suspended'][id % 3]}
 
 def gen_network_data(id):
-    id = int(id)
     return {'id': id,
             'name': 'network %s' %id, 
             'ip': '%s.%s.%s.%s' %(id, id, id, id),
@@ -41,7 +39,6 @@ def gen_network_data(id):
            }
 
 def gen_storage_data(id):
-    id = int(id)
     return {'id': id,
             'name': 'network %s' %id, 
             'size': id * 3000,
@@ -49,68 +46,125 @@ def gen_storage_data(id):
             }
 
 def gen_template_data(id):
-    id = int(id)
     return {'id': id,
-            'name': 'network %s' %id, 
+            'name': ['centos5', 'centos6', 'rhel6-jbos', 'winserver2008', 'jetty-cluster'][id % 5], 
             'min_disk_size': id * 3000,
             'min_memory_size': id * 300
             }
 
 def gen_news_data(id):
-    id = int(id)
     def get_string(length):
         return ''.join(random.choice(string.letters) for i in xrange(length))
     return {'id': id,
             'type': ['info', 'warning', 'error', 'system_message'][id % 4],
-            'title': get_string(20),
+            'name': get_string(20),
             'content': get_string(400)
             }
 
+limit = 20
 
-class ComputeList(object):
+computes = [gen_compute_data(i) for i in range(limit)]
+storages = [gen_storage_data(i) for i in range(limit)]
+networks = [gen_network_data(i) for i in range(limit)]
+templates = [gen_template_data(i) for i in range(limit)]
+news = [gen_news_data(i) for i in range(limit)]
+
+
+
+class GenericContainer(object):
+
+    resource = {'ComputeList': computes,
+                'StorageList': storages,
+                'NetworkList': networks,
+                'TemplateList': templates,
+                'NewsList': news
+                }
+
     def GET(self):
-        limit = 20
-        return json.dumps([{x: gen_compute_data(x)['hostname']} for x in range(limit)])
+        # deduce resource type from the object name
+        cls = self.__class__.__name__
+        type = self.resource[cls]
 
-class Compute(object):
+        return json.dumps([{t['id']: t['name']} for t in type])
+
+    def POST(self):
+        # deduce resource type from the object name
+        cls = self.__class__.__name__
+        type = self.resource[cls]
+
+        # create a new object of a given type
+        new_id = max([t['id'] for t in type]) + 1
+        submitted_data = json.loads(web.data())
+        submitted_data.update({'id': new_id})
+        type.append(submitted_data)
+        return json.dumps(type[-1], sort_keys = 4, indent = 4)
+
+class GenericResource(object):
+    
+    resource = {'Compute': computes,
+                'Storage': storages,
+                'Network': networks,
+                'Template': templates,
+                'News': news
+                }
+
+    def PUT(self, id):
+        id = int(id)
+        # deduce resource type from the object name
+        cls = self.__class__.__name__
+        type = self.resource[cls]
+
+        # locate the object for updating
+        for o in type:
+            if o['id'] == id:
+                submitted_data = json.loads(web.data())
+                o.update(submitted_data)
+                o['id'] = id # just in case request overwrites it
+                return json.dumps(o, sort_keys = 4, indent = 4)
+        # nothing found
+        raise web.notfound()
+
+    def DELETE(self, id):
+        id = int(id)
+        # deduce resource type from the object name
+        cls = self.__class__.__name__
+        type = self.resource[cls]
+
+        # locate the object for deleting
+        for o in type:
+            if o['id'] == id:
+                type.remove(o)
+                return
+        # nothing found
+        raise web.notfound()
+
     def GET(self, id):
-        return json.dumps(gen_compute_data(id), sort_keys = 4, indent = 4)
+        id = int(id)
+        cls = self.__class__.__name__
+        type = self.resource[cls]
 
-class NetworkList(object):
-    def GET(self):
-        limit = 20
-        return json.dumps([{x: gen_network_data(x)['name']} for x in range(limit)])
+        # locate the object for updating
+        for o in type:
+            if o['id'] == id:
+                return json.dumps(o, sort_keys = 4, indent = 4)
+        # nothing found
+        raise web.notfound()
 
-class Network(object):
-    def GET(self, id):
-        return json.dumps(gen_network_data(id), sort_keys = 4, indent = 4)
 
-class StorageList(object):
-    def GET(self):
-        limit = 20
-        return json.dumps([{x: gen_storage_data(x)['name']} for x in range(limit)])
+class ComputeList(GenericContainer): pass
+class Compute(GenericResource): pass
 
-class Storage(object):
-    def GET(self, id):
-        return json.dumps(gen_storage_data(id), sort_keys = 4, indent = 4)
+class NetworkList(GenericContainer): pass
+class Network(GenericResource): pass
 
-class TemplateList(object):
-    def GET(self):
-        limit = 20
-        return json.dumps([{x: gen_template_data(x)['name']} for x in range(limit)])
+class StorageList(GenericContainer): pass
+class Storage(GenericResource): pass
 
-class Template(object):
-    def GET(self, id):
-        return json.dumps(gen_template_data(id), sort_keys = 4, indent = 4)
+class TemplateList(GenericContainer): pass
+class Template(GenericResource): pass
 
-class NewsList(object):
-    def GET(self):
-        limit = 20
-        return json.dumps([{x: gen_news_data(x)['title']} for x in range(limit)])
-
-class News(object):
-    def GET(self, id):
-        return json.dumps(gen_news_data(id), sort_keys = 4, indent = 4)
+class NewsList(GenericContainer): pass
+class News(GenericResource): pass
 
 
 if __name__ == "__main__":

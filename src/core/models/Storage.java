@@ -4,17 +4,18 @@ import org.json.JSONObject;
 
 public class Storage extends Item
 {
-	private Storage()
+	public Storage()
 	{
+		super();
 		m_size = 0;
 		m_type = null;
 	}
 	
-	private void assign(Storage storage)
+	public Storage(int id, String name, int size, String type)
 	{
-		super.assign(storage);
-		m_size = storage.m_size;
-		m_type = storage.m_type;
+		super(id, name);
+		m_size = size;
+		m_type = type;
 	}
 	
 	public int size()
@@ -25,6 +26,61 @@ public class Storage extends Item
 	public String type()
 	{
 		return m_type;
+	}
+	
+	public boolean assign(Item item)
+	{
+		boolean success = false;
+		
+		try
+		{
+			assignStorage((Storage) item);
+			success = true;
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return success;
+	}
+	
+	public boolean assign(JSONObject jsonObject, boolean full)
+	{
+		boolean success = false;
+		
+		try
+		{
+			Storage temp = new Storage();
+			temp.assignStorage(jsonObject, full);
+			assignStorage(temp);
+			success = true;
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return success;
+	}
+	
+	@Override
+	public String toJSON()
+	{
+		String jsonRepresentation = null;
+		
+		try
+		{
+			JSONObject jsonObject = new JSONObject();
+			jsonStorage(jsonObject);
+			jsonRepresentation = jsonObject.toString();
+		}
+		catch (Exception exception)
+		{
+			
+		}
+		
+		return jsonRepresentation;
 	}
 	
 	@Override
@@ -45,51 +101,29 @@ public class Storage extends Item
 		return stringRepresentation;
 	}
 	
-	public static Storage parse(JSONObject jsonObject, boolean full)
+	private void assignStorage(Storage storage)
 	{
-		Storage storage = null;
-		Storage temp = new Storage();
-		
-		if (parse(temp, jsonObject, full))
-		{
-			storage = temp;
-		}
-		
-		return storage;
+		assignItem(storage);
+		m_size = storage.m_size;
+		m_type = storage.m_type;
 	}
 	
-	public static boolean parse(Storage storage, JSONObject jsonObject, boolean full)
+	private void assignStorage(JSONObject jsonObject, boolean full) throws Exception
 	{
-		boolean success = false;
+		assignItem(jsonObject, full);
 		
-		try
+		if (m_full)
 		{
-			Storage temp = new Storage();
-			temp.m_full = full;
-			
-			if (full)
-			{
-				temp.m_id = jsonObject.getInt("id");
-				temp.m_name = jsonObject.getString("name");
-				temp.m_size = jsonObject.getInt("size");
-				temp.m_type = jsonObject.getString("type");
-			}
-			else
-			{
-				String key = (String) jsonObject.keys().next();
-				temp.m_id = Integer.parseInt(key);
-				temp.m_name = jsonObject.getString(key);
-			}
-			
-			storage.assign(temp);
-			success = true;
+			m_size = jsonObject.getInt("size");
+			m_type = jsonObject.getString("type");
 		}
-		catch (Exception exception)
-		{
-			
-		}
-		
-		return success;
+	}
+	
+	private void jsonStorage(JSONObject jsonObject) throws Exception
+	{
+		jsonItem(jsonObject);
+		jsonObject.put("size", m_size);
+		jsonObject.put("type", m_type);
 	}
 	
 	private int m_size;
