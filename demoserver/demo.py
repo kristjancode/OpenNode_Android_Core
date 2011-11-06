@@ -4,24 +4,30 @@ import web
 import json
 import string
 import random
+import datetime
+import basicauth
+
 
 urls = (
+    '/', 'AllResourcesList', 
     '/computes/', 'ComputeList',
-    '/computes/(\d+)', 'Compute',
+    '/computes/(\d+)/', 'Compute',
     '/networks/', 'NetworkList',
-    '/networks/(\d+)', 'Network',
+    '/networks/(\d+)/', 'Network',
     '/storages/', 'StorageList',
-    '/storages/(\d+)', 'Storage',
+    '/storages/(\d+)/', 'Storage',
     '/templates/', 'TemplateList',
-    '/templates/(\d+)', 'Template',
+    '/templates/(\d+)/', 'Template',
     '/news/', 'NewsList',
-    '/news/(\d+)', 'News'
-)
+    '/news/(\d+)/', 'News',
+    '/news/(\d+)/comments/', 'CommentList'
+    )
+
 app = web.application(urls, globals())
 
 def gen_compute_data(id):
     return {'id': id,
-            'name': 'hostname %s' %id, 
+            'name': 'hostname_%s' %id, 
             'arch': ['x86', 'x64', 'win32', 'win64', 'macosx'][id % 5], 
             'memory': 2*id,
             'cpu': 0.2 * id,
@@ -31,7 +37,7 @@ def gen_compute_data(id):
 
 def gen_network_data(id):
     return {'id': id,
-            'name': 'network %s' %id, 
+            'name': 'network_%s' %id, 
             'ip': '%s.%s.%s.%s' %(id, id, id, id),
             'mask': '%s.%s.%s.0' %(id * 2, id * 2, id * 2),
             'address_allocation': ['dhcp', 'static'][id % 2], 
@@ -40,7 +46,7 @@ def gen_network_data(id):
 
 def gen_storage_data(id):
     return {'id': id,
-            'name': 'network %s' %id, 
+            'name': 'storage_pool_%s' %id, 
             'size': id * 3000,
             'type': ['local', 'iscsi', 'lvm', 'nfs'][id % 4]
             }
@@ -57,8 +63,10 @@ def gen_news_data(id):
         return ''.join(random.choice(string.letters) for i in xrange(length))
     return {'id': id,
             'type': ['info', 'warning', 'error', 'system_message'][id % 4],
-            'name': get_string(20),
-            'content': get_string(400)
+            'name': 'Wow!: ' + get_string(20),
+            'content': get_string(400),
+            'comments': [{idc: (datetime.datetime.now().isoformat(), ['andres', 'ilja', 'erik', 'marko', 'sasha'][idc % 5], 
+                'I think that ' + get_string(10))} for idc in range(1,10)],
             }
 
 limit = 20
@@ -69,7 +77,12 @@ networks = [gen_network_data(i) for i in range(limit)]
 templates = [gen_template_data(i) for i in range(limit)]
 news = [gen_news_data(i) for i in range(limit)]
 
+allresources = computes + storages + networks + templates + news
 
+def myVerifier(username, password, realm):
+    return username == "opennode" and password == "demo"
+
+auth = basicauth.auth(verify = myVerifier)
 
 class GenericContainer(object):
 
@@ -77,17 +90,45 @@ class GenericContainer(object):
                 'StorageList': storages,
                 'NetworkList': networks,
                 'TemplateList': templates,
-                'NewsList': news
+                'NewsList': news,
+                'AllResourcesList': allresources
                 }
+    
+    @auth
+    def OPTIONS(self):
+        web.header('Access-Control-Allow-Method', web.ctx.environ['HTTP_ACCESS_CONTROL_REQUEST_METHOD'])
+        web.header('Access-Control-Allow-Headers', web.ctx.environ['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])
+        web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
 
+    @auth
     def GET(self):
+        if 'HTTP_ORIGIN' in web.ctx.environ:
+            web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
+        
+        # extract search parameters
+        def filter(o):
+            """Evaluate whether object matches request query"""
+            q = web.ctx.query
+            if q.rfind('q=') == -1:
+                return True
+            else:
+                terms = q[q.index('q=') + 2:].decode('utf8').split('&')
+                # iterate over search terms, return True for the first hit
+                for t in terms:
+                    if o['name'].rfind(t) != -1:
+                        return True
+            return False
         # deduce resource type from the object name
         cls = self.__class__.__name__
         type = self.resource[cls]
 
-        return json.dumps([{t['id']: t['name']} for t in type])
+        return json.dumps([t for t in type if filter(t)], indent = 4)
 
+    @auth
     def POST(self):
+        if 'HTTP_ORIGIN' in web.ctx.environ:
+            web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
+
         # deduce resource type from the object name
         cls = self.__class__.__name__
         type = self.resource[cls]
@@ -108,7 +149,17 @@ class GenericResource(object):
                 'News': news
                 }
 
+    @auth
+    def OPTIONS(self, id):
+        web.header('Access-Control-Allow-Method', web.ctx.environ['HTTP_ACCESS_CONTROL_REQUEST_METHOD'])
+        web.header('Access-Control-Allow-Headers', web.ctx.environ['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'])
+        web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
+
+    @auth
     def PUT(self, id):
+        if 'HTTP_ORIGIN' in web.ctx.environ:
+            web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
+
         id = int(id)
         # deduce resource type from the object name
         cls = self.__class__.__name__
@@ -124,7 +175,10 @@ class GenericResource(object):
         # nothing found
         raise web.notfound()
 
+    @auth
     def DELETE(self, id):
+        if 'HTTP_ORIGIN' in web.ctx.environ:
+            web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
         id = int(id)
         # deduce resource type from the object name
         cls = self.__class__.__name__
@@ -138,16 +192,17 @@ class GenericResource(object):
         # nothing found
         raise web.notfound()
 
+    @auth
     def GET(self, id):
+        if 'HTTP_ORIGIN' in web.ctx.environ:
+            web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
         id = int(id)
         cls = self.__class__.__name__
-        type = self.resource[cls]
-
-        # locate the object for updating
-        for o in type:
-            if o['id'] == id:
-                return json.dumps(o, sort_keys = 4, indent = 4)
-        # nothing found
+        resource_type = self.resource[cls]
+        # locate object
+        for obj in resource_type:
+            if obj['id'] == id:
+                return json.dumps(obj, sort_keys = 4, indent = 4)
         raise web.notfound()
 
 
@@ -166,6 +221,32 @@ class Template(GenericResource): pass
 class NewsList(GenericContainer): pass
 class News(GenericResource): pass
 
+class AllResourcesList(GenericContainer): pass
+
+class CommentList(object):
+    
+    @auth
+    def POST(self, newsid):
+        print newsid
+        if 'HTTP_ORIGIN' in web.ctx.environ:
+            web.header('Access-Control-Allow-Origins', web.ctx.environ['HTTP_ORIGIN'])
+
+        # load corresponding news
+        foundNews = None
+        for n in news:
+            if int(n['id']) == int(newsid):
+                foundNews = n
+                break
+
+        if foundNews is None:
+            raise web.notfound()
+
+        # append a new comment to the news
+        new_id = max(foundNews['comments']).keys()[0] + 1
+        submitted_data = json.loads(web.data())
+        foundNews['comments'].append({new_id: (datetime.datetime.now().isoformat(), 
+                            submitted_data['author'], submitted_data['content'])})
+        return json.dumps(foundNews, sort_keys = 4, indent = 4)
 
 if __name__ == "__main__":
     app.run()
