@@ -186,6 +186,7 @@ class GenericResource(object):
         for o in type:
             if o['id'] == id:
                 type.remove(o)
+                allresources.remove(o)
                 return
         # nothing found
         raise web.notfound()
