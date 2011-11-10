@@ -137,6 +137,7 @@ class GenericContainer(object):
         submitted_data = json.loads(web.data())
         submitted_data.update({'id': new_id})
         type.append(submitted_data)
+        allresources.append(submitted_data)
         return json.dumps(type[-1], sort_keys = 4, indent = 4)
 
 class GenericResource(object):
