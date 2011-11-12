@@ -81,3 +81,4 @@ def auth(verify = dictVerify, realm = "Protected", notAuthenticatedFunc = defaul
                 return notAuthenticatedFunc(realm, remoteUser, remotePassword, redirectURL)
         return f
     return decorator
+

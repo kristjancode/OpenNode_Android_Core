@@ -45,22 +45,28 @@ def gen_network_data(id):
            }
 
 def gen_storage_data(id):
+    mult = random.randint(1, 3000)
     return {'id': id,
             'name': 'storage_pool_%s' %id, 
-            'size': id * 3000,
+            'capacity': id * 3000,
+            'available': id*mult,
             'type': ['local', 'iscsi', 'lvm', 'nfs'][id % 4]
             }
 
 def gen_template_data(id):
     return {'id': id,
-            'name': ['centos5', 'centos6', 'rhel6-jbos', 'winserver2008', 'jetty-cluster'][id % 5], 
+            'name': ['centos5', 'centos6', 'rhel6-jboss', 'winserver2008', 'jetty-cluster'][id % 5], 
             'min_disk_size': id * 3000,
-            'min_memory_size': id * 300
+            'min_memory_size': id * 300,
+            'min_cpu': 2,
+            'max_cpu': 4,
+            'max_disk_size': id * 2000000,
+            'max_memory_size': id * 200000,
             }
 
 def gen_news_data(id):
     def get_string(length):
-        return ''.join("TEMPORARY FIX")
+        return ''.join(random.choice(string.ascii_letters) for i in xrange(length))
     return {'id': id,
             'type': ['info', 'warning', 'error', 'system_message'][id % 4],
             'name': 'Wow!: ' + get_string(20),
@@ -123,6 +129,15 @@ class GenericContainer(object):
 
         return json.dumps([t for t in type if filter(t)], indent = 4)
 
+    def _publish_news(self, item_type, item_text):
+        new_id = max([t['id'] for t in news]) + 1
+        news_item['id'] = new_id
+        news_item['name'] = "New object: %s" %item_type
+        news_item['type'] = 'info'
+        news_item['content'] = "%s: %s" % (datetime.datetime.now().isoformat(),text, item_text)
+        news.append(new_item)
+        allresources.append(news_item)
+
     @auth
     def POST(self):
         if 'HTTP_ORIGIN' in web.ctx.environ:
@@ -138,8 +153,10 @@ class GenericContainer(object):
         submitted_data.update({'id': new_id})
         type.append(submitted_data)
         allresources.append(submitted_data)
+#        self._publish_news(cls, 'Create a new object of type %s ith id %' % (type, new_id))
         return json.dumps(type[-1], sort_keys = 4, indent = 4)
 
+    
 class GenericResource(object):
     
     resource = {'Compute': computes,
